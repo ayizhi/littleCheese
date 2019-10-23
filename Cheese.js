@@ -424,6 +424,83 @@ function flatMap(fn) {
     return _fn;
 }
 
+function debounce(delay) {
+    
+    var lastTimestamp = null;
+    var debounce = false;
+    var listeners = [];
+    
+    var _fn = (cheese, value, index, handler, transforms, done) => {
+        var now = null;
+        
+        if(debounce) {
+            return done(cheese._outputStream)
+        }
+
+        listeners = cheese._outputStream.listeners('data');
+        listeners.map(fn => {
+            cheese._outputStream.removeListener('data', fn);
+        });
+
+        cheese._outputStream.on('data', v => {
+            now = Date.now();
+            if(!lastTimestamp) {
+                lastTimestamp = now;
+            }
+            if(now - lastTimestamp > delay) {
+                cheese._execute(index, v, handler, transforms);
+            }
+            lastTimestamp = now;
+        });
+
+        debounced = true;
+
+        return done(cheese._outputStream);
+    };
+
+    _fn.__fn_type = 'debounce';
+    _fn.newInstance = function() {
+        return debounce(delay);
+    }
+
+    return _fn
+
+}
+
+function throttle(delay) {
+
+    var throttle = false;
+    var listeners = [];
+    var bufferedValue = null;
+    var interval = null;
+
+    var _fn = (cheese, value, index, handler, transforms, done) => {
+        if(throttle) {
+            return done(cheese._outputStream);
+        }
+        listeners = cheese._outputStream.listeners('data');
+        listeners.forEach(fn => {
+            cheese._outputStream.removeListener('data', fn);
+        });
+        bufferedValue = value;
+        cheese._outputStream.on('data', v => {
+            bufferedValue = v;
+        });
+        if(!interval) {
+            interval = setInterval(() => {
+                if(bufferedValue !== null) {
+                    cheese._execute(index, bufferedValue, handler, transforms);
+                    bufferedValue = null;
+                }
+            }, delay);
+        }
+
+        cheese._outputStream.on('finish', () => {
+            clearInterval(interval)
+        })
+    }
+
+}
 
 
 Cheese.Utils = {};
@@ -435,6 +512,8 @@ Cheese.Utils.takeUntil = takeUntil;
 Cheese.Utils.takeWhile = takeWhile;
 Cheese.Utils.split = split;
 Cheese.Utils.flatMap = flatMap;
+Cheese.Utils.debounce = debounce;
+Cheese.Utils.throttle = throttle;
 
 module.exports = Cheese
 
